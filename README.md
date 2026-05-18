@@ -42,9 +42,29 @@ A reverse proxy for GitHub Copilot that exposes OpenAI-compatible `/v1/*` routes
 
 ## Installation
 
-### Prebuilt binaries (recommended)
+### One-line install (macOS, Linux)
 
-Download the latest release from the [Releases page](https://github.com/heyustudio/copilot-api-proxy/releases/latest). Pick the archive that matches your platform:
+```bash
+curl -fsSL https://raw.githubusercontent.com/heyustudio/copilot-api-proxy/main/install.sh | bash
+```
+
+The script downloads the latest release for your platform, verifies its SHA256 checksum, installs the binary to `~/.local/bin/copilot-api-proxy`, clears Gatekeeper quarantine on macOS, and runs `copilot-api-proxy auth` to start the GitHub device-flow login.
+
+Optional environment variables:
+
+- `INSTALL_DIR` — override the install location (default: `~/.local/bin`)
+- `VERSION` — pin a specific release tag (default: latest)
+- `SKIP_AUTH` — set to any non-empty value to skip the post-install auth step
+
+Example:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/heyustudio/copilot-api-proxy/main/install.sh | INSTALL_DIR=/usr/local/bin SKIP_AUTH=1 bash
+```
+
+### Manual download
+
+Grab an archive from the [Releases page](https://github.com/heyustudio/copilot-api-proxy/releases/latest):
 
 | Platform | Archive |
 | --- | --- |
@@ -52,7 +72,7 @@ Download the latest release from the [Releases page](https://github.com/heyustud
 | Linux x86_64 | `copilot-api-proxy-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz` |
 | Linux ARM64 | `copilot-api-proxy-vX.Y.Z-aarch64-unknown-linux-gnu.tar.gz` |
 
-Extract and place the binary somewhere on your `PATH`. For example, on macOS / Linux:
+Extract and place the binary somewhere on your `PATH`:
 
 ```bash
 tar -xzf copilot-api-proxy-*.tar.gz
