@@ -59,7 +59,7 @@ tar -xzf copilot-api-proxy-*.tar.gz
 sudo install copilot-api-proxy-*/copilot-api-proxy /usr/local/bin/
 ```
 
-On macOS, the first run may be blocked by Gatekeeper because the binary is unsigned — clear the quarantine attribute with `xattr -d com.apple.quarantine /usr/local/bin/copilot-api-proxy`.
+On macOS, the first run may be blocked by Gatekeeper because the binary is unsigned — clear the quarantine attribute with `xattr -d com.apple.quarantine /path/to/copilot-api-proxy` (substitute the actual path where you installed it).
 
 Each archive ships with a matching `.sha256` file for verification.
 
