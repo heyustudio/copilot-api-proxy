@@ -220,7 +220,17 @@ fn remap_anthropic_model(body: Bytes, supported_reasoning_efforts: Option<&[Stri
         }
     }
 
-    if model_changed || thinking_changed || output_config_changed {
+    // 4. Strip fields Copilot's /v1/messages rejects (e.g. context_management sent by Claude Code).
+    const UNSUPPORTED_FIELDS: &[&str] = &["context_management"];
+    let mut fields_stripped = false;
+    for field in UNSUPPORTED_FIELDS {
+        if obj.remove(*field).is_some() {
+            tracing::debug!(target: "llm", field, "stripped unsupported field for Copilot");
+            fields_stripped = true;
+        }
+    }
+
+    if model_changed || thinking_changed || output_config_changed || fields_stripped {
         if let Ok(bytes) = serde_json::to_vec(&value) {
             return Bytes::from(bytes);
         }
