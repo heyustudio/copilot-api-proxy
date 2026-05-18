@@ -17,6 +17,10 @@ BINARY="copilot-api-proxy"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${VERSION:-}"
 
+tmpdir=""
+cleanup() { [ -n "$tmpdir" ] && rm -rf "$tmpdir"; }
+trap cleanup EXIT
+
 err()  { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 info() { printf '\033[36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
@@ -68,7 +72,7 @@ main() {
   command -v curl >/dev/null 2>&1 || err "curl is required"
   command -v tar  >/dev/null 2>&1 || err "tar is required"
 
-  local target tag asset url tmpdir extracted_dir dest
+  local target tag asset url extracted_dir dest
   target="$(detect_target)"
   info "Platform: $target"
 
@@ -79,7 +83,6 @@ main() {
   url="https://github.com/$REPO/releases/download/$tag/$asset"
 
   tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"' EXIT
 
   info "Downloading $asset"
   curl -fsSL "$url"        -o "$tmpdir/$asset"        || err "failed to download $url"
