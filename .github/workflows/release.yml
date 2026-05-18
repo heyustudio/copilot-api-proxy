@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     name: Build ${{ matrix.target }}
@@ -18,19 +21,10 @@ jobs:
         include:
           - target: aarch64-apple-darwin
             os: macos-14
-            archive: tar.gz
-          - target: x86_64-apple-darwin
-            os: macos-13
-            archive: tar.gz
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            archive: tar.gz
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
-            archive: tar.gz
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            archive: zip
 
     steps:
       - uses: actions/checkout@v4
@@ -48,8 +42,7 @@ jobs:
       - name: Build release binary
         run: cargo build --release --locked --target ${{ matrix.target }}
 
-      - name: Package (unix)
-        if: matrix.archive == 'tar.gz'
+      - name: Package
         shell: bash
         run: |
           set -euo pipefail
@@ -60,18 +53,6 @@ jobs:
           tar -czf "${STAGE}.tar.gz" "$STAGE"
           shasum -a 256 "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256"
 
-      - name: Package (windows)
-        if: matrix.archive == 'zip'
-        shell: pwsh
-        run: |
-          $stage = "copilot-api-proxy-$env:GITHUB_REF_NAME-${{ matrix.target }}"
-          New-Item -ItemType Directory -Force -Path $stage | Out-Null
-          Copy-Item "target/${{ matrix.target }}/release/copilot-api-proxy.exe" "$stage/"
-          if (Test-Path README.md) { Copy-Item README.md "$stage/" }
-          if (Test-Path LICENSE) { Copy-Item LICENSE "$stage/" }
-          Compress-Archive -Path "$stage/*" -DestinationPath "$stage.zip"
-          (Get-FileHash "$stage.zip" -Algorithm SHA256).Hash | Out-File -Encoding ascii "$stage.zip.sha256"
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -79,8 +60,6 @@ jobs:
           path: |
             copilot-api-proxy-*.tar.gz
             copilot-api-proxy-*.tar.gz.sha256
-            copilot-api-proxy-*.zip
-            copilot-api-proxy-*.zip.sha256
           if-no-files-found: error
 
   release:
