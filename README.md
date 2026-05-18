@@ -42,6 +42,29 @@ A reverse proxy for GitHub Copilot that exposes OpenAI-compatible `/v1/*` routes
 
 ## Installation
 
+### Prebuilt binaries (recommended)
+
+Download the latest release from the [Releases page](https://github.com/heyustudio/copilot-api-proxy/releases/latest). Pick the archive that matches your platform:
+
+| Platform | Archive |
+| --- | --- |
+| macOS Apple Silicon | `copilot-api-proxy-vX.Y.Z-aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `copilot-api-proxy-vX.Y.Z-x86_64-apple-darwin.tar.gz` |
+| Linux x86_64 | `copilot-api-proxy-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux ARM64 | `copilot-api-proxy-vX.Y.Z-aarch64-unknown-linux-gnu.tar.gz` |
+| Windows x86_64 | `copilot-api-proxy-vX.Y.Z-x86_64-pc-windows-msvc.zip` |
+
+Extract and place the binary somewhere on your `PATH`. For example, on macOS / Linux:
+
+```bash
+tar -xzf copilot-api-proxy-*.tar.gz
+sudo install copilot-api-proxy-*/copilot-api-proxy /usr/local/bin/
+```
+
+On macOS, the first run may be blocked by Gatekeeper because the binary is unsigned — clear the quarantine attribute with `xattr -d com.apple.quarantine /usr/local/bin/copilot-api-proxy`.
+
+Each archive ships with a matching `.sha256` file for verification.
+
 ### From source
 
 ```bash
