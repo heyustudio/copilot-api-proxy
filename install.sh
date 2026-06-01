@@ -22,6 +22,9 @@ tmpdir=""
 cleanup() { [ -n "$tmpdir" ] && rm -rf "$tmpdir"; }
 trap cleanup EXIT
 
+# Set by ensure_on_path when it appends to a shell rc file.
+PATH_RC_UPDATED=""
+
 err()  { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 info() { printf '\033[36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[33mwarning:\033[0m %s\n' "$*" >&2; }
@@ -69,6 +72,56 @@ verify_checksum() {
   fi
 }
 
+# Ensure $1 is on PATH for future shells by appending an export to the right rc
+# file. Idempotent: skips when already active or already configured. Also exports
+# PATH for the rest of this install so generated hints resolve.
+ensure_on_path() {
+  local dir="$1"
+
+  case ":$PATH:" in
+    *":$dir:"*) return 0 ;;  # already active this session
+  esac
+
+  local rc
+  case "${SHELL:-}" in
+    */zsh) rc="$HOME/.zshrc" ;;
+    */bash)
+      if [ "$(uname -s)" = "Darwin" ]; then rc="$HOME/.bash_profile"; else rc="$HOME/.bashrc"; fi
+      ;;
+    *) rc="$HOME/.profile" ;;
+  esac
+
+  # Write a $HOME-relative path when possible so the rc stays portable.
+  local rc_dir="$dir"
+  case "$dir" in
+    "$HOME"/*) rc_dir="\$HOME${dir#"$HOME"}" ;;
+  esac
+  local line="export PATH=\"$rc_dir:\$PATH\""
+
+  if [ -f "$rc" ] && grep -Fq "$line" "$rc"; then
+    warn "$dir is configured in $rc but not active in this shell."
+    PATH_RC_UPDATED="$rc"
+    export PATH="$dir:$PATH"
+    return 0
+  fi
+
+  if ! { printf '\n# Added by copilot-api-proxy installer\n%s\n' "$line" >> "$rc"; }; then
+    warn "could not update $rc — add this line manually: $line"
+    return 0
+  fi
+
+  export PATH="$dir:$PATH"
+  PATH_RC_UPDATED="$rc"
+  info "Added $dir to your PATH in $rc"
+}
+
+print_path_reminder() {
+  [ -n "$PATH_RC_UPDATED" ] || return 0
+  echo
+  warn "Restart your shell or run: source $PATH_RC_UPDATED"
+  echo "         …so 'copilot-api-proxy' and 'claude-proxy' resolve as commands."
+}
+
 main() {
   command -v curl >/dev/null 2>&1 || err "curl is required"
   command -v tar  >/dev/null 2>&1 || err "tar is required"
@@ -106,20 +159,12 @@ main() {
     xattr -d com.apple.quarantine "$dest" 2>/dev/null || true
   fi
 
-  if ! command -v "$BINARY" >/dev/null 2>&1; then
-    case ":$PATH:" in
-      *:"$INSTALL_DIR":*) ;;
-      *)
-        warn "$INSTALL_DIR is not on your PATH."
-        echo "         Add it by appending this line to your shell rc file:"
-        echo "             export PATH=\"$INSTALL_DIR:\$PATH\""
-        ;;
-    esac
-  fi
+  ensure_on_path "$INSTALL_DIR"
 
   if [ -n "${SKIP_AUTH:-}" ]; then
     info "SKIP_AUTH set — skipping device-flow auth"
     info "Done. Next: $dest auth && $dest claude-setup && $dest server"
+    print_path_reminder
     return 0
   fi
 
@@ -132,6 +177,7 @@ main() {
   if [ -n "${SKIP_SETUP:-}" ]; then
     info "SKIP_SETUP set — skipping launcher generation"
     info "Done. Generate it later with: $dest claude-setup"
+    print_path_reminder
     return 0
   fi
 
@@ -139,6 +185,8 @@ main() {
   info "Generating Claude Code launcher (claude-proxy)..."
   "$dest" claude-setup --output "$INSTALL_DIR/claude-proxy" || \
     warn "launcher generation failed — run '$dest claude-setup' manually later"
+
+  print_path_reminder
 }
 
 main "$@"

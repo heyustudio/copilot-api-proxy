@@ -50,6 +50,8 @@ curl -fsSL https://raw.githubusercontent.com/heyustudio/copilot-api-proxy/main/i
 
 The script downloads the latest release for your platform, verifies its SHA256 checksum, installs the binary to `~/.local/bin/copilot-api-proxy`, clears Gatekeeper quarantine on macOS, runs `copilot-api-proxy auth` to start the GitHub device-flow login, and then runs `copilot-api-proxy claude-setup` to generate a `claude-proxy` launcher (see [Claude Code Launcher](#claude-code-launcher)).
 
+If the install directory is not already on your `PATH`, the script appends `export PATH="$INSTALL_DIR:$PATH"` to your shell rc file (`~/.zshrc`, `~/.bash_profile`/`~/.bashrc`, or `~/.profile`) — idempotently — and reminds you to restart your shell so `copilot-api-proxy` and `claude-proxy` resolve as commands.
+
 Optional environment variables:
 
 - `INSTALL_DIR` — override the install location (default: `~/.local/bin`)
