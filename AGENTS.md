@@ -58,6 +58,11 @@ cargo run -- server --log-level debug
 # Run GitHub device-flow authentication
 cargo run -- auth
 
+# Generate a Claude Code launcher (claude-proxy) from the live model catalog
+cargo run -- claude-setup
+cargo run -- claude-setup --yes            # accept recommended defaults, no prompts
+cargo run -- claude-setup --no-probe       # skip /v1/messages verification
+
 # Install as a user service
 cargo run -- service install
 
@@ -196,6 +201,7 @@ src/
 ├── claude.rs        # Anthropic <-> OpenAI conversion, native Claude passthrough detection, and Anthropic-style errors
 ├── gemini.rs        # Gemini native API <-> OpenAI conversion
 ├── llm.rs           # Shared local OpenAI/Anthropic/Gemini route handlers
+├── setup.rs         # `claude-setup`: discover/probe Claude models, write claude-proxy launcher
 ├── amp/
 │   ├── mod.rs       # Amp provider routing and Amp-specific management proxy
 │   └── local.rs     # Local Amp API handlers (--amp-local mode)

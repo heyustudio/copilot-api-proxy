@@ -2,12 +2,13 @@
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use copilot_api_proxy::{auth, config, server, web_backend::SearchProvider};
+use copilot_api_proxy::{auth, config, server, setup, web_backend::SearchProvider};
 use service_manager::{
     RestartPolicy, ServiceInstallCtx, ServiceLabel, ServiceLevel, ServiceManager,
     ServiceUninstallCtx,
 };
 use std::ffi::OsString;
+use std::path::PathBuf;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Parser)]
@@ -54,6 +55,24 @@ enum Commands {
         #[command(subcommand)]
         action: ServiceAction,
     },
+    /// Generate a Claude Code launcher configured for this proxy
+    ClaudeSetup {
+        /// Where to write the launcher script (default: ~/.local/bin/claude-proxy)
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Proxy port the launcher should target
+        #[arg(long, default_value = "9876")]
+        port: u16,
+        /// Skip probing each model with a /v1/messages call
+        #[arg(long)]
+        no_probe: bool,
+        /// Omit --dangerously-skip-permissions from the generated launcher
+        #[arg(long)]
+        no_skip_permissions: bool,
+        /// Accept recommended defaults without prompting
+        #[arg(short = 'y', long)]
+        yes: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -99,6 +118,13 @@ async fn main() -> Result<()> {
             ServiceAction::Install { port } => install_service(port),
             ServiceAction::Uninstall => uninstall_service(),
         },
+        Commands::ClaudeSetup {
+            output,
+            port,
+            no_probe,
+            no_skip_permissions,
+            yes,
+        } => run_claude_setup(output, port, !no_probe, !no_skip_permissions, yes).await,
     }
 }
 
@@ -116,6 +142,27 @@ async fn run_auth() -> Result<()> {
     println!("Token saved to: {}\n", token_path.display());
 
     Ok(())
+}
+
+async fn run_claude_setup(
+    output: Option<PathBuf>,
+    port: u16,
+    probe: bool,
+    skip_permissions: bool,
+    assume_yes: bool,
+) -> Result<()> {
+    // Keep upstream token-exchange logs quiet so the interactive picker is clean.
+    init_tracing("copilot_api_proxy=warn");
+
+    let output = output.unwrap_or_else(setup::default_output_path);
+    setup::run(setup::SetupOptions {
+        output,
+        port,
+        probe,
+        skip_permissions,
+        assume_yes,
+    })
+    .await
 }
 
 async fn run_server(

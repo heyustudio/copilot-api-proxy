@@ -9,6 +9,7 @@
 #   INSTALL_DIR  Install location (default: ~/.local/bin)
 #   VERSION      Release tag to install (default: latest)
 #   SKIP_AUTH    Set to any non-empty value to skip the GitHub device-flow auth step
+#   SKIP_SETUP   Set to any non-empty value to skip generating the claude-proxy launcher
 #
 set -euo pipefail
 
@@ -118,13 +119,26 @@ main() {
 
   if [ -n "${SKIP_AUTH:-}" ]; then
     info "SKIP_AUTH set — skipping device-flow auth"
-    info "Done. Next: $dest auth && $dest server"
+    info "Done. Next: $dest auth && $dest claude-setup && $dest server"
     return 0
   fi
 
   info "Starting GitHub device-flow authentication..."
   echo
-  exec "$dest" auth
+  # Not exec'd: we keep the controlling terminal so the claude-setup picker
+  # (which reads /dev/tty) can run afterwards.
+  "$dest" auth || err "authentication failed"
+
+  if [ -n "${SKIP_SETUP:-}" ]; then
+    info "SKIP_SETUP set — skipping launcher generation"
+    info "Done. Generate it later with: $dest claude-setup"
+    return 0
+  fi
+
+  echo
+  info "Generating Claude Code launcher (claude-proxy)..."
+  "$dest" claude-setup --output "$INSTALL_DIR/claude-proxy" || \
+    warn "launcher generation failed — run '$dest claude-setup' manually later"
 }
 
 main "$@"

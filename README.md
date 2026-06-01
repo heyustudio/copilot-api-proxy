@@ -48,13 +48,14 @@ A reverse proxy for GitHub Copilot that exposes OpenAI-compatible `/v1/*` routes
 curl -fsSL https://raw.githubusercontent.com/heyustudio/copilot-api-proxy/main/install.sh | bash
 ```
 
-The script downloads the latest release for your platform, verifies its SHA256 checksum, installs the binary to `~/.local/bin/copilot-api-proxy`, clears Gatekeeper quarantine on macOS, and runs `copilot-api-proxy auth` to start the GitHub device-flow login.
+The script downloads the latest release for your platform, verifies its SHA256 checksum, installs the binary to `~/.local/bin/copilot-api-proxy`, clears Gatekeeper quarantine on macOS, runs `copilot-api-proxy auth` to start the GitHub device-flow login, and then runs `copilot-api-proxy claude-setup` to generate a `claude-proxy` launcher (see [Claude Code Launcher](#claude-code-launcher)).
 
 Optional environment variables:
 
 - `INSTALL_DIR` — override the install location (default: `~/.local/bin`)
 - `VERSION` — pin a specific release tag (default: latest)
 - `SKIP_AUTH` — set to any non-empty value to skip the post-install auth step
+- `SKIP_SETUP` — set to any non-empty value to skip generating the `claude-proxy` launcher
 
 Example:
 
@@ -142,6 +143,46 @@ droid exec "say hello"
 ```
 
 By default, this proxy handles Droid LLM calls locally through Copilot and forwards Droid control-plane routes to Factory. Add `--droid-local` if you want a strict local control-plane subset instead.
+
+## Claude Code Launcher
+
+`copilot-api-proxy claude-setup` generates an executable launcher (`claude-proxy`) that
+runs [Claude Code](https://claude.com/claude-code) against this proxy with the right
+Anthropic environment variables. It queries Copilot for the Claude models that are actually
+reachable through the native `/v1/messages` passthrough, lets you pick one per slot
+(`ANTHROPIC_DEFAULT_OPUS_MODEL`, `…_SONNET_MODEL`, `…_HAIKU_MODEL`), and writes the script.
+
+```bash
+# Interactive picker; writes ~/.local/bin/claude-proxy by default
+copilot-api-proxy claude-setup
+
+# Non-interactive: accept the recommended models
+copilot-api-proxy claude-setup --yes
+
+# Write somewhere else
+copilot-api-proxy claude-setup --output ./claude-proxy
+```
+
+The installer runs `claude-setup` automatically after authentication (set `SKIP_SETUP=1` to
+opt out). Re-run it any time the Copilot model catalog changes to refresh your launcher.
+
+Then start the proxy and launch Claude Code through the generated script:
+
+```bash
+copilot-api-proxy server     # in one terminal
+claude-proxy                 # launches `claude` pointed at the proxy
+```
+
+Notes:
+
+- **Model discovery** lists only native Claude models (`opus`/`sonnet`/`haiku`). By default
+  each candidate is verified with a 1-token `/v1/messages` probe, so models that are listed
+  but rejected upstream are filtered out. Pass `--no-probe` to skip verification.
+- **Haiku slot**: Claude Code sends a reasoning effort on background calls, which models
+  without reasoning-effort support reject. `claude-setup` recommends an effort-capable model
+  (falling back to your Sonnet pick) to avoid that error.
+- **Flags**: `--port` sets the proxy port baked into the launcher (default `9876`);
+  `--no-skip-permissions` omits `--dangerously-skip-permissions` from the generated script.
 
 ## API Surfaces
 

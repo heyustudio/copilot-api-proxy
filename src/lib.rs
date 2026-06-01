@@ -12,6 +12,7 @@ pub mod initiator;
 pub mod llm;
 pub mod proxy;
 pub mod server;
+pub mod setup;
 pub mod token_counter;
 pub mod web_backend;
 

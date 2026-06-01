@@ -68,6 +68,21 @@ const ANTHROPIC_MODEL_ALIASES: &[(&str, &str)] = &[
     ("claude-opus-4-6", "claude-opus-4-7"),
 ];
 
+/// Apply the deprecated-model alias remapping to a bare model name. This is the
+/// same substitution `remap_anthropic_model` performs on request bodies, exposed
+/// so callers (e.g. `claude-setup`) can predict the id the proxy actually sends
+/// upstream.
+pub fn remap_model_name(model: &str) -> String {
+    let mut remapped = model.to_string();
+    for (from, to) in ANTHROPIC_MODEL_ALIASES {
+        if remapped.contains(from) {
+            remapped = remapped.replace(from, to);
+            break;
+        }
+    }
+    remapped
+}
+
 /// Convert `budget_tokens` to a Copilot `output_config.effort` string.
 fn budget_tokens_to_effort(budget_tokens: u64) -> &'static str {
     if budget_tokens < 4_000 {
@@ -139,13 +154,7 @@ fn remap_anthropic_model(body: Bytes, supported_reasoning_efforts: Option<&[Stri
     // 1. Model alias remapping.
     let mut model_changed = false;
     if let Some(model) = obj.get("model").and_then(|v| v.as_str()) {
-        let mut remapped = model.to_string();
-        for (from, to) in ANTHROPIC_MODEL_ALIASES {
-            if remapped.contains(from) {
-                remapped = remapped.replace(from, to);
-                break;
-            }
-        }
+        let remapped = remap_model_name(model);
         if remapped != model {
             tracing::debug!(
                 target: "llm",
@@ -241,14 +250,7 @@ fn remap_anthropic_model(body: Bytes, supported_reasoning_efforts: Option<&[Stri
 fn remapped_anthropic_model_name(body: &[u8]) -> Option<String> {
     let value: serde_json::Value = serde_json::from_slice(body).ok()?;
     let model = value.get("model").and_then(|v| v.as_str())?;
-    let mut remapped = model.to_string();
-    for (from, to) in ANTHROPIC_MODEL_ALIASES {
-        if remapped.contains(from) {
-            remapped = remapped.replace(from, to);
-            break;
-        }
-    }
-    Some(remapped)
+    Some(remap_model_name(model))
 }
 
 fn needs_supported_reasoning_effort_lookup(body: &[u8]) -> bool {
